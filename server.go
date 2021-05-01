@@ -9,12 +9,14 @@ import "io/ioutil"
 import "time"
 import "strconv"
 import "github.com/gofiber/fiber/v2"
-import "github.com/gofiber/fiber/v2/middleware/cache"
+
+//import "github.com/gofiber/fiber/v2/middleware/cache"
 import yaml "gopkg.in/yaml.v2"
 
 type Character struct {
-	Id   int
-	Name string
+	Id          int
+	Name        string
+	Description string
 }
 
 type Characters struct {
@@ -48,10 +50,10 @@ func main() {
 	setup(&config)
 
 	app := fiber.New()
-	app.Use(cache.New(cache.Config{
-		Expiration:   1 * time.Hour,
-		CacheControl: true,
-	}))
+	// app.Use(cache.New(cache.Config{
+	// 	Expiration:   1 * time.Hour,
+	// 	CacheControl: true,
+	// }))
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("👋")
@@ -73,12 +75,13 @@ func main() {
 			fmt.Printf("Request Error %v", err)
 		}
 
+		// 1493 characters as of may 2
 		q := request.URL.Query()
 		q.Add("ts", strconv.FormatInt(ts, 10))
 		q.Add("apikey", config.PublicKey)
 		q.Add("hash", hex.EncodeToString(hash[:]))
-		q.Add("limit", "22")
-		//q.Add("offset", "20") // offset is index value
+		q.Add("limit", "100")
+		q.Add("offset", "1450") // offset is index value
 		request.URL.RawQuery = q.Encode()
 
 		fmt.Println("qs? %s", request.URL.String())
@@ -104,7 +107,7 @@ func main() {
 		}
 
 		out, _ := json.Marshal(data.Data.Results)
-		return c.SendString(string(out))
+		return c.SendString(fmt.Sprintf("%d %s", len(data.Data.Results), string(out)))
 	})
 
 	app.Listen(":3000")
