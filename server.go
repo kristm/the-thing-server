@@ -10,7 +10,7 @@ import "time"
 import "strconv"
 import "github.com/gofiber/fiber/v2"
 
-//import "github.com/gofiber/fiber/v2/middleware/cache"
+import "github.com/gofiber/fiber/v2/middleware/cache"
 import yaml "gopkg.in/yaml.v2"
 
 type Character struct {
@@ -50,10 +50,10 @@ func main() {
 	setup(&config)
 
 	app := fiber.New()
-	// app.Use(cache.New(cache.Config{
-	// 	Expiration:   1 * time.Hour,
-	// 	CacheControl: true,
-	// }))
+	app.Use(cache.New(cache.Config{
+		Expiration:   10 * time.Second,
+		//CacheControl: true,
+	}))
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("👋")
@@ -131,6 +131,7 @@ func main() {
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
+    fmt.Println("making request >>>>>>>>>>")
 		response, err := client.Do(request)
 
 		defer response.Body.Close()
