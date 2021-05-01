@@ -87,7 +87,6 @@ func main() {
 		fmt.Println("qs? %s", request.URL.String())
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
-		fmt.Printf(">> %v", request)
 
 		response, err := client.Do(request)
 
@@ -108,6 +107,45 @@ func main() {
 
 		out, _ := json.Marshal(data.Data.Results)
 		return c.SendString(fmt.Sprintf("%d %s", len(data.Data.Results), string(out)))
+	})
+
+	app.Get("/characters/:id", func(c *fiber.Ctx) error {
+		var ts = time.Now().Unix()
+		hashStr := fmt.Sprintf("%d%s%s", ts, config.PrivateKey, config.PublicKey)
+		hash := md5.Sum([]byte(hashStr))
+		marvelUrl := fmt.Sprintf("%s%s", "https://gateway.marvel.com:443/v1/public/characters/", c.Params("id"))
+		client := &http.Client{}
+		request, err := http.NewRequest("GET", marvelUrl, nil)
+
+		if err != nil {
+			fmt.Printf("Request Error %v", err)
+		}
+
+		fmt.Printf("request %s", marvelUrl)
+
+		q := request.URL.Query()
+		q.Add("ts", strconv.FormatInt(ts, 10))
+		q.Add("apikey", config.PublicKey)
+		q.Add("hash", hex.EncodeToString(hash[:]))
+		request.URL.RawQuery = q.Encode()
+
+		request.Header.Set("content-type", "application/json; charset=UTF-8")
+
+		response, err := client.Do(request)
+
+		defer response.Body.Close()
+
+		if err != nil {
+			fmt.Printf("Response Error %v", err)
+		}
+
+		var char ApiResponse
+		body, _ := ioutil.ReadAll(response.Body)
+		json.Unmarshal(body, &char)
+
+		out, _ := json.Marshal(char.Data.Results)
+		return c.SendString(string(out))
+
 	})
 
 	app.Listen(":3000")
