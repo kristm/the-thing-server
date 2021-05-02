@@ -32,32 +32,6 @@ type Config struct {
 	PrivateKey string `yaml:"private_key"`
 }
 
-// func (c *Character) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal(&struct {
-// 		Id int `json:"id"`
-// 	}{
-// 		Id: c.Id,
-// 	})
-// }
-
-// func (c *Character) UnmarshalJSON(p []byte) error {
-//   type Alias Character
-//   aux := &struct {
-//     Name string `json:"omitempty"`
-//     Description string `json:"omitempty"`
-//     *Alias
-//   }{
-//     Alias: (*Alias)(c),
-//   }
-//
-//   c.Name = ""
-//   c.Description = ""
-//   if err := json.Unmarshal(p, &aux); err != nil {
-//     return err
-//   }
-//   return nil
-// }
-
 func setup(config *Config) {
 	yamlFile, err := ioutil.ReadFile("env.yaml")
 	if err != nil {
