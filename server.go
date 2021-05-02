@@ -3,6 +3,7 @@ package main
 import "crypto/md5"
 import "encoding/hex"
 import "net/http"
+import "net/url"
 import "fmt"
 import "encoding/json"
 import "io/ioutil"
@@ -45,6 +46,18 @@ func setup(config *Config) {
 	}
 }
 
+func authQs(config *Config) url.Values {
+	var ts = time.Now().Unix()
+	hashStr := fmt.Sprintf("%d%s%s", ts, config.PrivateKey, config.PublicKey)
+	hash := md5.Sum([]byte(hashStr))
+	q := url.Values{}
+	q.Add("ts", strconv.FormatInt(ts, 10))
+	q.Add("apikey", config.PublicKey)
+	q.Add("hash", hex.EncodeToString(hash[:]))
+
+	return q
+}
+
 func main() {
 	var config Config
 	setup(&config)
@@ -52,7 +65,7 @@ func main() {
 	app := fiber.New()
 	app.Use(cache.New(cache.Config{
 		Expiration:   10 * time.Second,
-		//CacheControl: true,
+		CacheControl: true,
 	}))
 
 	app.Get("/", func(c *fiber.Ctx) error {
@@ -60,13 +73,6 @@ func main() {
 	})
 
 	app.Get("/characters", func(c *fiber.Ctx) error {
-		var ts = time.Now().Unix()
-		hashStr := fmt.Sprintf("%d%s%s", ts, config.PrivateKey, config.PublicKey)
-		hash := md5.Sum([]byte(hashStr))
-
-		fmt.Println("hash string ", hashStr)
-		fmt.Println("hash: ", hash, hex.EncodeToString(hash[:]))
-
 		marvelUrl := "https://gateway.marvel.com:443/v1/public/characters"
 		client := &http.Client{}
 		request, err := http.NewRequest("GET", marvelUrl, nil)
@@ -75,19 +81,13 @@ func main() {
 			fmt.Printf("Request Error %v", err)
 		}
 
-		// 1493 characters as of may 2
-		q := request.URL.Query()
-		q.Add("ts", strconv.FormatInt(ts, 10))
-		q.Add("apikey", config.PublicKey)
-		q.Add("hash", hex.EncodeToString(hash[:]))
-		q.Add("limit", "100")
-		q.Add("offset", "1450") // offset is index value
-		request.URL.RawQuery = q.Encode()
+		request.URL.RawQuery = authQs(&config).Encode()
 
 		fmt.Println("qs? %s", request.URL.String())
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
+		// 1493 characters as of may 2
 		response, err := client.Do(request)
 
 		defer response.Body.Close()
@@ -110,9 +110,6 @@ func main() {
 	})
 
 	app.Get("/characters/:id", func(c *fiber.Ctx) error {
-		var ts = time.Now().Unix()
-		hashStr := fmt.Sprintf("%d%s%s", ts, config.PrivateKey, config.PublicKey)
-		hash := md5.Sum([]byte(hashStr))
 		marvelUrl := fmt.Sprintf("%s%s", "https://gateway.marvel.com:443/v1/public/characters/", c.Params("id"))
 		client := &http.Client{}
 		request, err := http.NewRequest("GET", marvelUrl, nil)
@@ -121,17 +118,11 @@ func main() {
 			fmt.Printf("Request Error %v", err)
 		}
 
-		fmt.Printf("request %s", marvelUrl)
-
-		q := request.URL.Query()
-		q.Add("ts", strconv.FormatInt(ts, 10))
-		q.Add("apikey", config.PublicKey)
-		q.Add("hash", hex.EncodeToString(hash[:]))
-		request.URL.RawQuery = q.Encode()
+		request.URL.RawQuery = authQs(&config).Encode()
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
-    fmt.Println("making request >>>>>>>>>>")
+		fmt.Println("making request >>>>>>>>>>")
 		response, err := client.Do(request)
 
 		defer response.Body.Close()
