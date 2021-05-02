@@ -10,7 +10,6 @@ import "io/ioutil"
 import "time"
 import "strconv"
 import "github.com/gofiber/fiber/v2"
-
 import "github.com/gofiber/fiber/v2/middleware/cache"
 import yaml "gopkg.in/yaml.v2"
 
@@ -32,6 +31,32 @@ type Config struct {
 	PublicKey  string `yaml:"public_key"`
 	PrivateKey string `yaml:"private_key"`
 }
+
+func (c *Character) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&struct {
+		Id int `json:"id"`
+	}{
+		Id: c.Id,
+	})
+}
+
+// func (c *Character) UnmarshalJSON(p []byte) error {
+//   type Alias Character
+//   aux := &struct {
+//     Name string `json:"omitempty"`
+//     Description string `json:"omitempty"`
+//     *Alias
+//   }{
+//     Alias: (*Alias)(c),
+//   }
+//
+//   c.Name = ""
+//   c.Description = ""
+//   if err := json.Unmarshal(p, &aux); err != nil {
+//     return err
+//   }
+//   return nil
+// }
 
 func setup(config *Config) {
 	yamlFile, err := ioutil.ReadFile("env.yaml")
@@ -67,7 +92,7 @@ func main() {
 
 	app := fiber.New()
 	app.Use(cache.New(cache.Config{
-		Expiration:   10 * time.Second,
+		Expiration:   10 * time.Minute,
 		CacheControl: true,
 	}))
 
@@ -84,12 +109,14 @@ func main() {
 			fmt.Printf("Request Error %v", err)
 		}
 
-		request.URL.RawQuery = authQs(&config).Encode()
-
-		//fmt.Println("qs? %s", request.URL.String())
+		qs := authQs(&config)
+		qs.Add("limit", "100")
+		qs.Add("offset", "100")
+		request.URL.RawQuery = qs.Encode()
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
+		fmt.Printf("make request>>>>")
 		// 1493 characters as of may 2
 		response, err := client.Do(request)
 
@@ -103,6 +130,8 @@ func main() {
 
 		var data ApiResponse
 		json.Unmarshal(body, &data)
+
+		fmt.Printf("characters: %v", data.Data.Results)
 
 		for _, character := range data.Data.Results {
 			fmt.Println(">> ", character.Id, character.Name)
@@ -125,7 +154,6 @@ func main() {
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
-		fmt.Println("making request >>>>>>>>>>")
 		response, err := client.Do(request)
 
 		defer response.Body.Close()
