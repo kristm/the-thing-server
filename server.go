@@ -46,8 +46,11 @@ func setup(config *Config) {
 	}
 }
 
+// for test mocking
+var now = time.Now
+
 func authQs(config *Config) url.Values {
-	var ts = time.Now().Unix()
+	var ts = now().Unix()
 	hashStr := fmt.Sprintf("%d%s%s", ts, config.PrivateKey, config.PublicKey)
 	hash := md5.Sum([]byte(hashStr))
 	q := url.Values{}
@@ -83,7 +86,7 @@ func main() {
 
 		request.URL.RawQuery = authQs(&config).Encode()
 
-		fmt.Println("qs? %s", request.URL.String())
+		//fmt.Println("qs? %s", request.URL.String())
 
 		request.Header.Set("content-type", "application/json; charset=UTF-8")
 
