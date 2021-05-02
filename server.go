@@ -32,13 +32,13 @@ type Config struct {
 	PrivateKey string `yaml:"private_key"`
 }
 
-func (c *Character) MarshalJSON() ([]byte, error) {
-	return json.Marshal(&struct {
-		Id int `json:"id"`
-	}{
-		Id: c.Id,
-	})
-}
+// func (c *Character) MarshalJSON() ([]byte, error) {
+// 	return json.Marshal(&struct {
+// 		Id int `json:"id"`
+// 	}{
+// 		Id: c.Id,
+// 	})
+// }
 
 // func (c *Character) UnmarshalJSON(p []byte) error {
 //   type Alias Character
@@ -137,8 +137,12 @@ func main() {
 			fmt.Println(">> ", character.Id, character.Name)
 		}
 
-		out, _ := json.Marshal(data.Data.Results)
-		return c.SendString(fmt.Sprintf("%d %s", len(data.Data.Results), string(out)))
+		charIds := []int{}
+		for _, char := range data.Data.Results {
+			charIds = append(charIds, char.Id)
+		}
+		out, _ := json.Marshal(charIds)
+		return c.SendString(string(out))
 	})
 
 	app.Get("/characters/:id", func(c *fiber.Ctx) error {
@@ -171,5 +175,5 @@ func main() {
 
 	})
 
-	app.Listen(":3000")
+	app.Listen(":8080")
 }
