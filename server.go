@@ -47,6 +47,7 @@ func setup(config *Config) {
 
 // for test mocking
 var now = time.Now
+var config Config
 
 func authQs(config *Config) url.Values {
 	var ts = now().Unix()
@@ -60,8 +61,37 @@ func authQs(config *Config) url.Values {
 	return q
 }
 
+func apiRequest(url string) ([]byte, error) {
+	//marvelUrl := "https://gateway.marvel.com:443/v1/public/characters"
+	client := &http.Client{}
+	request, err := http.NewRequest("GET", url, nil)
+
+	if err != nil {
+		fmt.Printf("Request Error %v", err)
+		return nil, err
+	}
+
+	qs := authQs(&config)
+	qs.Add("limit", "100")
+	qs.Add("offset", "100")
+	request.URL.RawQuery = qs.Encode()
+	request.Header.Set("content-type", "application/json; charset=UTF-8")
+
+	// 1493 characters as of may 2
+	response, err := client.Do(request)
+
+	defer response.Body.Close()
+
+	if err != nil {
+		fmt.Printf("Response Error %v", err)
+		return nil, err
+	}
+
+	body, _ := ioutil.ReadAll(response.Body)
+	return body, nil
+}
+
 func main() {
-	var config Config
 	setup(&config)
 
 	app := fiber.New()
@@ -75,35 +105,21 @@ func main() {
 	})
 
 	app.Get("/characters", func(c *fiber.Ctx) error {
-		marvelUrl := "https://gateway.marvel.com:443/v1/public/characters"
-		client := &http.Client{}
-		request, err := http.NewRequest("GET", marvelUrl, nil)
+		body, err := apiRequest("https://gateway.marvel.com:443/v1/public/characters")
 
 		if err != nil {
-			fmt.Printf("Request Error %v", err)
+			return c.SendString(err.Error())
 		}
-
-		qs := authQs(&config)
-		qs.Add("limit", "100")
-		qs.Add("offset", "100")
-		request.URL.RawQuery = qs.Encode()
-
-		request.Header.Set("content-type", "application/json; charset=UTF-8")
-
-		fmt.Printf("make request>>>>")
-		// 1493 characters as of may 2
-		response, err := client.Do(request)
-
-		defer response.Body.Close()
-
-		if err != nil {
-			fmt.Printf("Response Error %v", err)
-		}
-
-		body, _ := ioutil.ReadAll(response.Body)
 
 		var data ApiResponse
 		json.Unmarshal(body, &data)
+		sm := Character{
+			Id:          -1,
+			Name:        "Strange Mouse",
+			Description: "Lab Rat",
+		}
+
+		data.Data.Results = append(data.Data.Results, sm)
 
 		fmt.Printf("characters: %v", data.Data.Results)
 
