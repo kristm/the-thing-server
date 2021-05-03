@@ -139,8 +139,12 @@ func main() {
 
 		json.Unmarshal(body, &char)
 
-		out, _ := json.Marshal(char.Data.Results)
-		return c.SendString(string(out))
+		if len(char.Data.Results) > 0 {
+			out, _ := json.Marshal(char.Data.Results[0])
+			return c.SendString(string(out))
+		}
+
+		return c.SendStatus(404)
 	})
 
 	app.Listen(":8080")
